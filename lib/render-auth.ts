@@ -1,0 +1,12 @@
+import {createHmac,timingSafeEqual} from 'node:crypto';
+import type {SettingsEnv} from './agent-settings';
+export const COOKIE='standup_admin';
+export function checkPassword(password:string){const expected=process.env.ADMIN_PASSWORD;if(!expected||expected.length<12)return false;const a=createHmac('sha256','password-compare').update(password).digest();const b=createHmac('sha256','password-compare').update(expected).digest();return timingSafeEqual(a,b);}
+function secret(){const s=process.env.SESSION_SECRET;if(!s||s.length<32)throw new Error('SESSION_SECRET must contain at least 32 characters');return s;}
+export function issueToken(){const payload=Buffer.from(JSON.stringify({expires:Date.now()+8*60*60*1000})).toString('base64url');const signature=createHmac('sha256',secret()).update(payload).digest('base64url');return payload+'.'+signature;}
+export function validToken(token:string){try{const [payload,sig,...rest]=token.split('.');if(!payload||!sig||rest.length)return false;const expected=createHmac('sha256',secret()).update(payload).digest();const actual=Buffer.from(sig,'base64url');if(actual.length!==expected.length||!timingSafeEqual(actual,expected))return false;const data=JSON.parse(Buffer.from(payload,'base64url').toString());return Number.isFinite(data.expires)&&data.expires>Date.now();}catch{return false;}}
+export function requestIsAdmin(request:Request){const value=request.headers.get('cookie')?.split(';').map(v=>v.trim()).find(v=>v.startsWith(COOKIE+'='))?.slice(COOKIE.length+1);return value?validToken(value):false;}
+export function normalizedRequest(request:Request){const base=(process.env.APP_ORIGIN||process.env.RENDER_EXTERNAL_URL);if(!base)return request;const url=new URL(request.url);return new Request(new URL(url.pathname+url.search,base),request);}
+export function trustedRequest(request:Request){request=normalizedRequest(request);const headers=new Headers(request.headers);for(const key of Array.from(headers.keys()))if(key.startsWith('oai-authenticated-user-'))headers.delete(key);if(requestIsAdmin(request))headers.set('oai-authenticated-user-email',process.env.ADMIN_EMAIL||'owner@standup.local');return new Request(request,{headers});}
+export function authEnv():Pick<SettingsEnv,'ADMIN_EMAIL'>{return {ADMIN_EMAIL:process.env.ADMIN_EMAIL||'owner@standup.local'};}
+export function sameOrigin(request:Request){return request.headers.get('origin')===new URL((process.env.APP_ORIGIN||process.env.RENDER_EXTERNAL_URL)||request.url).origin;}

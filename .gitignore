@@ -60,3 +60,10 @@ next-env.d.ts
 
 *.tsbuildinfo
 !/.dev.vars.example
+
+/.data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+!/.env.example

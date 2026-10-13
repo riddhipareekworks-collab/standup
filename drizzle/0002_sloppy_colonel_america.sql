@@ -1,0 +1,1 @@
+ALTER TABLE `agent_settings` ADD `conversation_goal` text DEFAULT '' NOT NULL;

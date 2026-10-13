@@ -1,0 +1,10 @@
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import path from 'node:path';
+import {projectRoot} from './sites-env.mjs';
+const configPath=path.join(projectRoot,'.sites-runtime','wrangler-migrations.json');
+mkdirSync(path.dirname(configPath),{recursive:true});
+writeFileSync(configPath,JSON.stringify({name:'akash-gupta-local-db',compatibility_date:'2026-05-15',d1_databases:[{binding:'DB',database_name:'site-creator-d1',database_id:'00000000-0000-4000-8000-000000000000',migrations_dir:path.join(projectRoot,'drizzle')}]},null,2));
+const result=spawnSync(process.execPath,['--import',path.join(projectRoot,'scripts/sites-env.mjs'),path.join(projectRoot,'node_modules/wrangler/bin/wrangler.js'),'d1','migrations','apply','DB','--local','--config',configPath,'--persist-to',path.join(projectRoot,'.wrangler/state')],{stdio:'inherit',env:{...process.env,CI:'true'}});
+if(result.error)throw result.error;
+process.exit(result.status??1);

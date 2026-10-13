@@ -1,0 +1,1 @@
+ALTER TABLE `agent_settings` ADD `empathy_examples` text DEFAULT '[]' NOT NULL;
